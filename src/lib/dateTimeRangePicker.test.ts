@@ -98,6 +98,23 @@ describe('minimumDuration', () => {
       )
     ).toBe(false);
   });
+
+  it('marks only the in-range start days as selectable for mixed global and field-specific bounds', () => {
+    const startValue = new Date('2026-04-14T07:00:00.000Z');
+    const startBounds = getEffectiveFieldBounds('start', startValue, 1, 1, true, true, {
+      minValue: new Date('2026-04-14T06:00:00.000Z'),
+      maxValue: new Date('2026-04-18T18:00:00.000Z'),
+      minStartValue: new Date('2026-04-14T07:00:00.000Z'),
+      maxStartValue: new Date('2026-04-17T16:00:00.000Z'),
+      minEndValue: new Date('2026-04-14T08:00:00.000Z'),
+      maxEndValue: new Date('2026-04-18T17:00:00.000Z')
+    });
+
+    expect(hasSelectableValueOnDay(new Date('2026-04-13T12:00:00.000Z'), startBounds, 1, true)).toBe(false);
+    expect(hasSelectableValueOnDay(new Date('2026-04-14T12:00:00.000Z'), startBounds, 1, true)).toBe(true);
+    expect(hasSelectableValueOnDay(new Date('2026-04-17T12:00:00.000Z'), startBounds, 1, true)).toBe(true);
+    expect(hasSelectableValueOnDay(new Date('2026-04-18T12:00:00.000Z'), startBounds, 1, true)).toBe(false);
+  });
 });
 
 describe('locale helpers', () => {

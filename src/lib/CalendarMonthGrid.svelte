@@ -205,22 +205,22 @@
   .day:disabled,
   .day.disabled-day {
     cursor: not-allowed;
-    color: var(--picker-disabled-text, #a1a8b5);
-    background: color-mix(in srgb, var(--picker-ghost-bg, #f8fafc) 42%, transparent);
-    opacity: 1;
+    color: var(--picker-disabled-text, #96a0b1);
+    background: var(--picker-disabled-bg, #eef2f7);
+    opacity: 0.55;
     box-shadow: none;
     transform: none;
   }
 
   .day.outside-month:disabled,
   .day.outside-month.disabled-day {
-    color: color-mix(in srgb, var(--picker-subtle-text, #7f8899) 72%, white 28%);
+    color: var(--picker-disabled-outside-text, #b8c0ce);
     background: transparent;
   }
 
   .day:disabled:hover,
   .day.disabled-day:hover {
-    background: color-mix(in srgb, var(--picker-ghost-bg, #f8fafc) 42%, transparent);
+    background: var(--picker-disabled-bg, #eef2f7);
   }
 
   .today {
