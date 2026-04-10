@@ -1,13 +1,16 @@
 <script lang="ts">
   import {
-    MONTH_NAMES,
+    getCalendarMonthLabel,
     getCalendarDays,
     getOrderedWeekdayNames,
+    getPickerText,
     isSameDay,
+    type PickerLocale,
     type WeekStartDay
   } from './dateTimeRangePicker';
 
   export let visibleMonthDate: Date;
+  export let locale: PickerLocale = undefined;
   export let weekStartsOn: WeekStartDay = 0;
   export let dayHeight = 40;
   export let shiftMonth: (delta: number) => void = () => {};
@@ -25,16 +28,18 @@
   export let isPreviewRangeEnd: (day: Date) => boolean = () => false;
   export let isPreviewRangeMiddle: (day: Date) => boolean = () => false;
 
-  $: weekdayNames = getOrderedWeekdayNames(weekStartsOn);
+  $: weekdayNames = getOrderedWeekdayNames(weekStartsOn, locale);
   $: calendarDays = getCalendarDays(visibleMonthDate, weekStartsOn);
   $: calendarKey = `${visibleMonthDate.getFullYear()}-${visibleMonthDate.getMonth()}-${weekStartsOn}`;
+  $: monthLabel = getCalendarMonthLabel(visibleMonthDate, locale);
+  $: text = getPickerText(locale);
 </script>
 
 <div class="calendar-root" style={`--calendar-day-height: ${dayHeight}px;`}>
   <div class="calendar-header">
-    <button class="ghost nav" type="button" on:click={() => shiftMonth(-1)}>‹</button>
-    <div class="month-title">{MONTH_NAMES[visibleMonthDate.getMonth()]} {visibleMonthDate.getFullYear()}</div>
-    <button class="ghost nav" type="button" on:click={() => shiftMonth(1)}>›</button>
+    <button class="ghost nav" type="button" aria-label={text.previousMonth} on:click={() => shiftMonth(-1)}>‹</button>
+    <div class="month-title">{monthLabel}</div>
+    <button class="ghost nav" type="button" aria-label={text.nextMonth} on:click={() => shiftMonth(1)}>›</button>
   </div>
 
   <div class="weekday-row">

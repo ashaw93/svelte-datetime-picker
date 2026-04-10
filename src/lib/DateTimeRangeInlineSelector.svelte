@@ -1,4 +1,4 @@
-  <script lang="ts">
+<script lang="ts">
   import { onMount } from 'svelte';
   import CalendarMonthGrid from './CalendarMonthGrid.svelte';
   import TimeSelectorColumns from './TimeSelectorColumns.svelte';
@@ -6,16 +6,20 @@
     HOUR_12_VALUES,
     formatSummary,
     formatTimeValue,
+    getEffectiveFieldBounds,
+    getDefaultTimePlaceholder,
     getDateOnlyRangePreview,
+    getFirstSelectableValue,
     getHour12,
     getMinuteValues,
-    getMinimumEndValue,
     getPeriod,
+    getPickerText,
     getRangePreview,
     getRangeFieldBaseValue,
     getRangeTimeLayout,
+    hasSelectableValueOnDay,
     isDateWithinRangeExclusive,
-    isTimeCandidateBeforeMinimum,
+    isTimeCandidateOutOfBounds,
     isSameDay,
     isSameTimestamp,
     normalizeDateOnlyRange,
@@ -28,8 +32,11 @@
     updateDateOnlyRangeFieldValue,
     updateRangeFieldValue,
     type NullableDate,
+    type PickerFieldBounds,
+    type PickerLocale,
     type Period,
     type PickerField,
+    type PickerValueBounds,
     type TimeFormat,
     type WeekStartDay
   } from './dateTimeRangePicker';
@@ -38,10 +45,17 @@
   export let endValue: NullableDate = null;
   export let startLabel = 'Start';
   export let endLabel = 'End';
+  export let locale: PickerLocale = undefined;
   export let weekStartsOn: WeekStartDay = 0;
   export let timeFormat: TimeFormat = '12h';
   export let minuteInterval = 1;
   export let minimumDuration = 1;
+  export let minValue: NullableDate = null;
+  export let maxValue: NullableDate = null;
+  export let minStartValue: NullableDate = null;
+  export let maxStartValue: NullableDate = null;
+  export let minEndValue: NullableDate = null;
+  export let maxEndValue: NullableDate = null;
   export let enableHeader = false;
   export let enableFooter = false;
   export let disableTimePicker = false;
@@ -64,15 +78,20 @@
   let startDisplayValue = getRangeFieldBaseValue('start', startValue, endValue);
   let endDisplayValue = getRangeFieldBaseValue('end', startValue, endValue);
   let endConstraintKey = 'none';
-  let minimumEndValue: NullableDate = null;
   let timeColumnMaxHeight = 234;
   let timeColumnMobileMaxHeight = 160;
   let timeSideWidth = 133;
+  let bounds: PickerValueBounds = {};
+  let startBounds: PickerFieldBounds = { min: null, max: null };
+  let endBounds: PickerFieldBounds = { min: null, max: null };
+  const defaultStartLabel = 'Start';
+  const defaultEndLabel = 'End';
   let headerEnabled = false;
   let footerEnabled = false;
   let timePickerEnabled = true;
   let rangeEnabled = true;
 
+  $: text = getPickerText(locale);
   $: normalizedMinuteInterval = sanitizeMinuteInterval(minuteInterval);
   $: normalizedMinimumDuration = sanitizeMinimumDuration(minimumDuration);
   $: minuteValues = getMinuteValues(normalizedMinuteInterval);
@@ -80,6 +99,17 @@
   $: footerEnabled = showRangeFooter ?? enableFooter;
   $: timePickerEnabled = showTime ?? !disableTimePicker;
   $: rangeEnabled = allowRange ?? !disableRange;
+  $: resolvedStartLabel = startLabel === defaultStartLabel ? text.start : startLabel;
+  $: resolvedEndLabel = endLabel === defaultEndLabel ? text.end : endLabel;
+  $: timePlaceholder = getDefaultTimePlaceholder(locale);
+  $: bounds = {
+    minValue,
+    maxValue,
+    minStartValue,
+    maxStartValue,
+    minEndValue,
+    maxEndValue
+  };
 
   $: {
     const normalizedStart = timePickerEnabled
@@ -96,9 +126,12 @@
           startValue,
           snapDateToMinuteInterval(endValue, normalizedMinuteInterval),
           normalizedMinuteInterval,
-          normalizedMinimumDuration
+          normalizedMinimumDuration,
+          true,
+          bounds,
+          rangeEnabled
         )
-      : normalizeDateOnlyRange(startValue, endValue);
+      : normalizeDateOnlyRange(startValue, endValue, true, bounds, rangeEnabled);
     if (!isSameTimestamp(normalizedRange.start, startValue)) {
       startValue = normalizedRange.start;
     }
@@ -127,7 +160,8 @@
         endValue,
         hoveredPreviewDay,
         normalizedMinuteInterval,
-        normalizedMinimumDuration
+        normalizedMinimumDuration,
+        bounds
       )
     : null;
   $: if (rangeEnabled && !timePickerEnabled) {
@@ -135,15 +169,49 @@
       dateSelectionTarget,
       startValue,
       endValue,
-      hoveredPreviewDay
+      hoveredPreviewDay,
+      bounds
     );
   }
-  $: startDisplayValue = getRangeFieldBaseValue('start', startValue, endValue, timePickerEnabled);
-  $: endDisplayValue = getRangeFieldBaseValue('end', startValue, endValue, timePickerEnabled);
-  $: minimumEndValue = timePickerEnabled && rangeEnabled
-    ? getMinimumEndValue(startValue, normalizedMinuteInterval, normalizedMinimumDuration)
-    : null;
-  $: endConstraintKey = minimumEndValue ? String(minimumEndValue.getTime()) : 'none';
+  $: startBounds = getEffectiveFieldBounds(
+    'start',
+    startValue,
+    normalizedMinuteInterval,
+    normalizedMinimumDuration,
+    timePickerEnabled,
+    rangeEnabled,
+    bounds
+  );
+  $: endBounds = getEffectiveFieldBounds(
+    'end',
+    startValue,
+    normalizedMinuteInterval,
+    normalizedMinimumDuration,
+    timePickerEnabled,
+    rangeEnabled,
+    bounds
+  );
+  $: startDisplayValue = (getFirstSelectableValue(
+    'start',
+    startValue,
+    endValue,
+    normalizedMinuteInterval,
+    normalizedMinimumDuration,
+    timePickerEnabled,
+    rangeEnabled,
+    bounds
+  ) ?? getRangeFieldBaseValue('start', startValue, endValue, timePickerEnabled)) as Date;
+  $: endDisplayValue = (getFirstSelectableValue(
+    'end',
+    startValue,
+    endValue,
+    normalizedMinuteInterval,
+    normalizedMinimumDuration,
+    timePickerEnabled,
+    rangeEnabled,
+    bounds
+  ) ?? getRangeFieldBaseValue('end', startValue, endValue, timePickerEnabled)) as Date;
+  $: endConstraintKey = `${endBounds.min ? endBounds.min.getTime() : 'none'}-${endBounds.max ? endBounds.max.getTime() : 'none'}`;
   $: ({ columnMaxHeight: timeColumnMaxHeight, mobileColumnMaxHeight: timeColumnMobileMaxHeight, sideWidth: timeSideWidth } =
     getRangeTimeLayout(headerEnabled, timeFormat));
 
@@ -216,7 +284,17 @@
   }
 
   function startNewRange(day: Date): void {
-    const base = getRangeFieldBaseValue('start', startValue, endValue, timePickerEnabled);
+    const base =
+      getFirstSelectableValue(
+        'start',
+        startValue,
+        endValue,
+        normalizedMinuteInterval,
+        normalizedMinimumDuration,
+        timePickerEnabled,
+        rangeEnabled,
+        bounds
+      ) ?? getRangeFieldBaseValue('start', startValue, endValue, timePickerEnabled);
     base.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
     const nextValue = timePickerEnabled ? snapDateToMinuteInterval(base, normalizedMinuteInterval) : normalizeDateValue(base);
     if (!nextValue) return;
@@ -229,7 +307,17 @@
   }
 
   function setFieldDate(field: PickerField, day: Date): void {
-    const base = getRangeFieldBaseValue(field, startValue, endValue, timePickerEnabled);
+    const base =
+      getFirstSelectableValue(
+        field,
+        startValue,
+        endValue,
+        normalizedMinuteInterval,
+        normalizedMinimumDuration,
+        timePickerEnabled,
+        rangeEnabled,
+        bounds
+      ) ?? getRangeFieldBaseValue(field, startValue, endValue, timePickerEnabled);
     base.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
     const nextValue = timePickerEnabled ? snapDateToMinuteInterval(base, normalizedMinuteInterval) : normalizeDateValue(base);
     if (!nextValue) return;
@@ -241,9 +329,11 @@
           startValue,
           endValue,
           normalizedMinuteInterval,
-          normalizedMinimumDuration
+          normalizedMinimumDuration,
+          bounds,
+          rangeEnabled
         )
-      : updateDateOnlyRangeFieldValue(field, nextValue, startValue, endValue);
+      : updateDateOnlyRangeFieldValue(field, nextValue, startValue, endValue, bounds, rangeEnabled);
     startValue = normalizedRange.start;
     endValue = normalizedRange.end;
 
@@ -259,7 +349,17 @@
   }
 
   function updateField(field: PickerField, updater: (next: Date) => void): void {
-    const next = getRangeFieldBaseValue(field, startValue, endValue, timePickerEnabled);
+    const next =
+      getFirstSelectableValue(
+        field,
+        startValue,
+        endValue,
+        normalizedMinuteInterval,
+        normalizedMinimumDuration,
+        timePickerEnabled,
+        rangeEnabled,
+        bounds
+      ) ?? getRangeFieldBaseValue(field, startValue, endValue, timePickerEnabled);
     updater(next);
     next.setSeconds(0, 0);
 
@@ -272,7 +372,9 @@
       startValue,
       endValue,
       normalizedMinuteInterval,
-      normalizedMinimumDuration
+      normalizedMinimumDuration,
+      bounds,
+      rangeEnabled
     );
     startValue = normalizedRange.start;
     endValue = normalizedRange.end;
@@ -333,30 +435,39 @@
   }
 
   function isStartHour24Disabled(_hour24: number): boolean {
-    return false;
+    return !minuteValues.some(
+      (minute) => !isTimeCandidateOutOfBounds(startDisplayValue, startBounds, _hour24, minute)
+    );
   }
 
   function isStartHour12Disabled(_hour12: number): boolean {
-    return false;
+    return !minuteValues.some(
+      (minute) =>
+        !isTimeCandidateOutOfBounds(
+          startDisplayValue,
+          startBounds,
+          to24Hour(_hour12, getPeriod(startDisplayValue)),
+          minute
+        )
+    );
   }
 
-  function isStartMinuteDisabled(_minute: number): boolean {
-    return false;
+  function isStartMinuteDisabled(minute: number): boolean {
+    return isTimeCandidateOutOfBounds(startDisplayValue, startBounds, startDisplayValue.getHours(), minute);
   }
 
-  function isStartPeriodDisabled(_period: Period): boolean {
-    return false;
+  function isStartPeriodDisabled(period: Period): boolean {
+    return HOUR_12_VALUES.every((hour12) =>
+      minuteValues.every((minute) =>
+        isTimeCandidateOutOfBounds(startDisplayValue, startBounds, to24Hour(hour12, period), minute)
+      )
+    );
   }
 
   function isEndCandidateDisabled(hour24: number, minute: number): boolean {
     if (!rangeEnabled) return false;
 
-    return isTimeCandidateBeforeMinimum(
-      getRangeFieldBaseValue('end', startValue, endValue, timePickerEnabled),
-      minimumEndValue,
-      hour24,
-      minute
-    );
+    return isTimeCandidateOutOfBounds(endDisplayValue, endBounds, hour24, minute);
   }
 
   function hasEnabledEndMinuteForHour(hour24: number): boolean {
@@ -399,21 +510,27 @@
   function isPreviewOnlyRangeMiddle(day: Date): boolean {
     return isWithinPreviewRange(day) && !isWithinRange(day);
   }
+
+  function isCalendarDayDisabled(day: Date): boolean {
+    const field = rangeEnabled ? dateSelectionTarget : 'start';
+    const fieldBounds = field === 'start' ? startBounds : endBounds;
+    return !hasSelectableValueOnDay(day, fieldBounds, normalizedMinuteInterval, timePickerEnabled);
+  }
 </script>
 
 <div class="inline-range-picker">
   {#if headerEnabled}
     <div class="range-header">
       <div>
-        <div class="eyebrow">{rangeEnabled ? 'Range' : 'Selection'}</div>
-        <div class="range-summary">{formatSummary(startValue, endValue, timeFormat, timePickerEnabled, rangeEnabled)}</div>
+        <div class="eyebrow">{rangeEnabled ? text.range : text.selection}</div>
+        <div class="range-summary">{formatSummary(startValue, endValue, timeFormat, timePickerEnabled, rangeEnabled, locale)}</div>
       </div>
       <div class="range-header-actions">
         {#if rangeEnabled}
-          <div class="selection-pill">Next date click: {dateSelectionTarget === 'start' ? startLabel : endLabel}</div>
+          <div class="selection-pill">{text.nextDateClick(dateSelectionTarget === 'start' ? resolvedStartLabel : resolvedEndLabel)}</div>
         {/if}
         <button class="ghost clear-action" type="button" on:click={clearRange}>
-          {rangeEnabled ? 'Clear range' : 'Clear selection'}
+          {rangeEnabled ? text.clearRange : text.clearSelection}
         </button>
       </div>
     </div>
@@ -428,19 +545,20 @@
     {#if timePickerEnabled}
       <section class="time-side">
         <div class="side-header">
-          <div class="eyebrow">{rangeEnabled ? startLabel : 'Time'}</div>
-          <div class="side-value">{formatTimeValue(startValue, 'Select time', timeFormat)}</div>
+          <div class="eyebrow">{rangeEnabled ? resolvedStartLabel : text.time}</div>
+          <div class="side-value">{formatTimeValue(startValue, timePlaceholder, timeFormat, locale)}</div>
         </div>
         {#key `${startDisplayValue.getTime()}-${timeFormat}-${normalizedMinuteInterval}`}
           <TimeSelectorColumns
             value={startDisplayValue}
             selectedValue={startValue}
+            {locale}
             {timeFormat}
             {minuteValues}
             columnMaxHeight={timeColumnMaxHeight}
             mobileColumnMaxHeight={timeColumnMobileMaxHeight}
             scrollVersion={startScrollVersion}
-            heading={rangeEnabled ? 'Start time' : 'Time'}
+            heading={rangeEnabled ? text.startTime : text.time}
             onSetHour24={setStartHour24}
             onSetHour12={setStartHour12}
             onSetMinute={setStartMinute}
@@ -457,6 +575,7 @@
     <section class="calendar-panel">
       <CalendarMonthGrid
         {visibleMonthDate}
+        {locale}
         {weekStartsOn}
         shiftMonth={shiftVisibleMonth}
         onDayClick={selectRangeDay}
@@ -464,6 +583,7 @@
         onDayFocus={handleDayHover}
         onDayMouseLeave={clearDayHover}
         onDayBlur={clearDayHover}
+        isDayDisabled={isCalendarDayDisabled}
         isSelectedDay={isSelectedRangeDay}
         isRangeMiddle={isWithinRange}
         {isRangeStart}
@@ -476,7 +596,7 @@
       {#if !headerEnabled}
         <div class="calendar-bottom-action">
           <button class="inline-clear subtle-button" type="button" on:click={clearRange}>
-            {rangeEnabled ? 'Clear range' : 'Clear selection'}
+            {rangeEnabled ? text.clearRange : text.clearSelection}
           </button>
         </div>
       {/if}
@@ -485,19 +605,20 @@
     {#if timePickerEnabled && rangeEnabled}
       <section class="time-side">
         <div class="side-header">
-          <div class="eyebrow">{endLabel}</div>
-          <div class="side-value">{formatTimeValue(endValue, 'Select time', timeFormat)}</div>
+          <div class="eyebrow">{resolvedEndLabel}</div>
+          <div class="side-value">{formatTimeValue(endValue, timePlaceholder, timeFormat, locale)}</div>
         </div>
         {#key `${endDisplayValue.getTime()}-${endConstraintKey}-${timeFormat}-${normalizedMinuteInterval}`}
           <TimeSelectorColumns
             value={endDisplayValue}
             selectedValue={endValue}
+            {locale}
             {timeFormat}
             {minuteValues}
             columnMaxHeight={timeColumnMaxHeight}
             mobileColumnMaxHeight={timeColumnMobileMaxHeight}
             scrollVersion={endScrollVersion}
-            heading="End time"
+            heading={text.endTime}
             onSetHour24={setEndHour24}
             onSetHour12={setEndHour12}
             onSetMinute={setEndMinute}
@@ -517,11 +638,11 @@
       <div class="footer-note">
         {rangeEnabled
           ? timePickerEnabled
-            ? 'Choose start time, click dates in the calendar for start and end, then fine-tune the end time.'
-            : 'Click dates in the calendar to set the start and end of the range.'
+            ? text.footerRangeWithTime
+            : text.footerRangeDateOnly
           : timePickerEnabled
-            ? 'Pick a date in the calendar, then adjust the time if needed.'
-            : 'Pick a date in the calendar.'}
+            ? text.footerSingleWithTime
+            : text.footerSingleDateOnly}
       </div>
     </div>
   {/if}

@@ -3,7 +3,10 @@
   import DateTimeRangeInlineSelector from './DateTimeRangeInlineSelector.svelte';
   import {
     formatFieldValue,
+    getDefaultFieldPlaceholder,
+    getPickerText,
     type NullableDate,
+    type PickerLocale,
     type TimeFormat,
     type WeekStartDay
   } from './dateTimeRangePicker';
@@ -13,10 +16,17 @@
   export let startLabel = 'Start';
   export let endLabel = 'End';
   export let placeholder = 'Select date and time';
+  export let locale: PickerLocale = undefined;
   export let weekStartsOn: WeekStartDay = 0;
   export let timeFormat: TimeFormat = '12h';
   export let minuteInterval = 1;
   export let minimumDuration = 1;
+  export let minValue: NullableDate = null;
+  export let maxValue: NullableDate = null;
+  export let minStartValue: NullableDate = null;
+  export let maxStartValue: NullableDate = null;
+  export let minEndValue: NullableDate = null;
+  export let maxEndValue: NullableDate = null;
   export let displayMode: 'popover' | 'inline' = 'popover';
   export let enableHeader = false;
   export let enableFooter = false;
@@ -30,17 +40,31 @@
   let isOpen = false;
   let isMobile = false;
   const defaultPlaceholder = 'Select date and time';
+  const defaultStartLabel = 'Start';
+  const defaultEndLabel = 'End';
   let headerEnabled = false;
   let footerEnabled = false;
   let timePickerEnabled = true;
   let rangeEnabled = true;
 
+  $: text = getPickerText(locale);
   $: headerEnabled = showRangeHeader ?? enableHeader;
   $: footerEnabled = showRangeFooter ?? enableFooter;
   $: timePickerEnabled = showTime ?? !disableTimePicker;
   $: rangeEnabled = allowRange ?? !disableRange;
+  $: resolvedStartLabel = startLabel === defaultStartLabel ? text.start : startLabel;
+  $: resolvedEndLabel = endLabel === defaultEndLabel ? text.end : endLabel;
   $: resolvedPlaceholder =
-    !timePickerEnabled && placeholder === defaultPlaceholder ? 'Select date' : placeholder;
+    placeholder === defaultPlaceholder
+      ? getDefaultFieldPlaceholder(timePickerEnabled, locale)
+      : placeholder;
+  $: pickerTitle = rangeEnabled
+    ? timePickerEnabled
+      ? text.pickTimeRange
+      : text.pickDateRange
+    : timePickerEnabled
+      ? text.pickDateAndTime
+      : text.pickDate;
 
   onMount(() => {
     const mediaQuery = window.matchMedia('(max-width: 980px)');
@@ -74,12 +98,19 @@
       <DateTimeRangeInlineSelector
         bind:startValue
         bind:endValue
-        {startLabel}
-        {endLabel}
+        startLabel={resolvedStartLabel}
+        endLabel={resolvedEndLabel}
+        {locale}
         {weekStartsOn}
         {timeFormat}
         {minuteInterval}
         {minimumDuration}
+        {minValue}
+        {maxValue}
+        {minStartValue}
+        {maxStartValue}
+        {minEndValue}
+        {maxEndValue}
         enableHeader={headerEnabled}
         enableFooter={footerEnabled}
         disableTimePicker={!timePickerEnabled}
@@ -89,58 +120,57 @@
   {:else}
     <div class:single-field-layout={!rangeEnabled} class="fields">
       <button class="field" type="button" on:click={openPicker}>
-        <span class="label">{startLabel}</span>
+        <span class="label">{resolvedStartLabel}</span>
         <span class:start-placeholder={!startValue}>
-          {formatFieldValue(startValue, resolvedPlaceholder, timeFormat, timePickerEnabled)}
+          {formatFieldValue(startValue, resolvedPlaceholder, timeFormat, timePickerEnabled, locale)}
         </span>
       </button>
 
       {#if rangeEnabled}
         <button class="field" type="button" on:click={openPicker}>
-          <span class="label">{endLabel}</span>
+          <span class="label">{resolvedEndLabel}</span>
           <span class:start-placeholder={!endValue}>
-            {formatFieldValue(endValue, resolvedPlaceholder, timeFormat, timePickerEnabled)}
+            {formatFieldValue(endValue, resolvedPlaceholder, timeFormat, timePickerEnabled, locale)}
           </span>
         </button>
       {/if}
     </div>
 
     {#if isOpen}
-    <button class="overlay" type="button" aria-label="Close picker" on:click={closePicker}></button>
+      <button class="overlay" type="button" aria-label={text.closePicker} on:click={closePicker}></button>
 
-    <div class:sheet={isMobile} class:popover={!isMobile} class="picker-shell" role="dialog" aria-modal="true">
-      <div class="picker-header">
-        <div>
-          <h2>
-            {rangeEnabled
-              ? timePickerEnabled
-                ? 'Pick a time range'
-                : 'Pick a date range'
-              : timePickerEnabled
-                ? 'Pick a date and time'
-                : 'Pick a date'}
-          </h2>
+      <div class:sheet={isMobile} class:popover={!isMobile} class="picker-shell" role="dialog" aria-modal="true">
+        <div class="picker-header">
+          <div>
+            <h2>{pickerTitle}</h2>
+          </div>
+          <button class="ghost close" type="button" on:click={closePicker}>✕</button>
         </div>
-        <button class="ghost close" type="button" on:click={closePicker}>✕</button>
-      </div>
 
-      <div class="picker-content">
-        <DateTimeRangeInlineSelector
-          bind:startValue
-          bind:endValue
-          {startLabel}
-          {endLabel}
-          {weekStartsOn}
-          {timeFormat}
-          {minuteInterval}
-          {minimumDuration}
-          enableHeader={headerEnabled}
-          enableFooter={footerEnabled}
-          disableTimePicker={!timePickerEnabled}
-          disableRange={!rangeEnabled}
-        />
+        <div class="picker-content">
+          <DateTimeRangeInlineSelector
+            bind:startValue
+            bind:endValue
+            startLabel={resolvedStartLabel}
+            endLabel={resolvedEndLabel}
+            {locale}
+            {weekStartsOn}
+            {timeFormat}
+            {minuteInterval}
+            {minimumDuration}
+            {minValue}
+            {maxValue}
+            {minStartValue}
+            {maxStartValue}
+            {minEndValue}
+            {maxEndValue}
+            enableHeader={headerEnabled}
+            enableFooter={footerEnabled}
+            disableTimePicker={!timePickerEnabled}
+            disableRange={!rangeEnabled}
+          />
+        </div>
       </div>
-    </div>
     {/if}
   {/if}
 </div>

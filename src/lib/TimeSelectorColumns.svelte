@@ -5,8 +5,11 @@
     HOUR_12_VALUES,
     PERIOD_VALUES,
     getHour12,
+    getPickerText,
+    getPeriodLabel,
     getPeriod,
     pad,
+    type PickerLocale,
     type NullableDate,
     type Period,
     type TimeFormat
@@ -14,6 +17,7 @@
 
   export let value: Date;
   export let selectedValue: NullableDate = value;
+  export let locale: PickerLocale = undefined;
   export let timeFormat: TimeFormat = '12h';
   export let minuteValues: number[] = [];
   export let heading = 'Hour';
@@ -32,8 +36,11 @@
   let hourColumnElement: HTMLDivElement | null = null;
   let minuteColumnElement: HTMLDivElement | null = null;
   let periodColumnElement: HTMLDivElement | null = null;
+  const defaultHeading = 'Hour';
 
   $: is24Hour = timeFormat === '24h';
+  $: text = getPickerText(locale);
+  $: resolvedHeading = heading === defaultHeading ? text.hour : heading;
   $: if (scrollVersion >= 0) {
     void scrollSelectedInputsIntoView();
   }
@@ -64,7 +71,7 @@
   class="time-selector"
   style={`--time-column-max-height: ${columnMaxHeight}px; --time-column-mobile-max-height: ${mobileColumnMaxHeight}px;`}
 >
-  <div class="time-heading">{heading}</div>
+  <div class="time-heading">{resolvedHeading}</div>
   <div class:time-columns-24={is24Hour} class="time-columns">
     <div
       bind:this={hourColumnElement}
@@ -122,7 +129,7 @@
             disabled={isPeriodDisabled(period)}
             on:click={() => onSetPeriod(period)}
           >
-            {period}
+            {getPeriodLabel(period, locale)}
           </button>
         {/each}
       </div>
