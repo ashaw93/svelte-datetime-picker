@@ -54,6 +54,7 @@
         <button
           type="button"
           class="day"
+          class:disabled-day={isDayDisabled(day)}
           class:selected-day={isSelectedDay(day)}
           class:range-middle={isRangeMiddle(day)}
           class:range-start={isRangeStart(day)}
@@ -201,8 +202,34 @@
     color: var(--picker-subtle-text, #7f8899);
   }
 
+  .day:disabled,
+  .day.disabled-day {
+    cursor: not-allowed;
+    color: var(--picker-disabled-text, #a1a8b5);
+    background: color-mix(in srgb, var(--picker-ghost-bg, #f8fafc) 42%, transparent);
+    opacity: 1;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .day.outside-month:disabled,
+  .day.outside-month.disabled-day {
+    color: color-mix(in srgb, var(--picker-subtle-text, #7f8899) 72%, white 28%);
+    background: transparent;
+  }
+
+  .day:disabled:hover,
+  .day.disabled-day:hover {
+    background: color-mix(in srgb, var(--picker-ghost-bg, #f8fafc) 42%, transparent);
+  }
+
   .today {
     outline: 1px solid var(--picker-today-outline, #c8d4f8);
+  }
+
+  .day.today:disabled,
+  .day.today.disabled-day {
+    outline-color: color-mix(in srgb, var(--picker-today-outline, #c8d4f8) 50%, white 50%);
   }
 
   .ghost {
