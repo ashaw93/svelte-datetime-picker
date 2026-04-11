@@ -13,7 +13,7 @@
     type NullableDate,
     type Period,
     type TimeFormat
-  } from './dateTimeRangePicker';
+  } from './dateTimeRangePicker.js';
 
   export let value: Date;
   export let selectedValue: NullableDate = value;

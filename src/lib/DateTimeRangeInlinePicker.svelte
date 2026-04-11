@@ -12,7 +12,7 @@
     type PickerLocale,
     type TimeFormat,
     type WeekStartDay
-  } from './dateTimeRangePicker';
+  } from './dateTimeRangePicker.js';
 
   export let startValue: NullableDate = null;
   export let endValue: NullableDate = null;

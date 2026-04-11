@@ -7,7 +7,7 @@
     isSameDay,
     type PickerLocale,
     type WeekStartDay
-  } from './dateTimeRangePicker';
+  } from './dateTimeRangePicker.js';
 
   export let visibleMonthDate: Date;
   export let locale: PickerLocale = undefined;

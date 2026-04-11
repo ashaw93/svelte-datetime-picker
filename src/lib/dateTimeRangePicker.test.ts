@@ -10,7 +10,7 @@ import {
   hasSelectableValueOnDay,
   normalizeRangeWithMinimumDuration,
   sanitizeMinimumDuration
-} from './dateTimeRangePicker';
+} from './dateTimeRangePicker.js';
 
 describe('minimumDuration', () => {
   it('allows start and end to match exactly when minimumDuration is 0', () => {

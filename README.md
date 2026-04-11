@@ -17,7 +17,7 @@ GitHub:
 npm install git+https://github.com/ashaw93/svelte-datetime-picker.git
 ```
 
-This package currently ships raw Svelte source, so it is best suited to modern Svelte projects using Vite or SvelteKit.
+This package follows the standard Svelte library packaging flow with `@sveltejs/package` and is best suited to modern Svelte projects using Vite or SvelteKit.
 
 ## Usage
 
