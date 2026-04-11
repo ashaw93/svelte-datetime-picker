@@ -4,6 +4,14 @@
   "description": "Reusable Svelte date and date-time picker components with range and single-value modes.",
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ashaw93/svelte-datetime-picker.git"
+  },
+  "homepage": "https://github.com/ashaw93/svelte-datetime-picker",
+  "bugs": {
+    "url": "https://github.com/ashaw93/svelte-datetime-picker/issues"
+  },
   "sideEffects": [
     "**/*.css"
   ],
@@ -30,6 +38,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "package": "svelte-package",
+    "prepare": "npm run package",
     "prepublishOnly": "npm run check && npm run test && npm run package"
   },
   "peerDependencies": {
