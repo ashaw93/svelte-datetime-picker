@@ -22,6 +22,10 @@ export type PickerFieldBounds = {
   min: NullableDate;
   max: NullableDate;
 };
+export type BoundsValidationIssue = {
+  code: string;
+  message: string;
+};
 export type PickerText = {
   start: string;
   end: string;
@@ -531,6 +535,115 @@ export function getEffectiveFieldBounds(
   };
 }
 
+function getBoundComparisonIssue(
+  minLabel: keyof PickerValueBounds,
+  maxLabel: keyof PickerValueBounds,
+  minValue: NullableDate,
+  maxValue: NullableDate,
+  minuteInterval: number,
+  showTime: boolean
+): BoundsValidationIssue | null {
+  const normalizedMin = normalizeBoundValue(minValue, minuteInterval, showTime, 'min');
+  const normalizedMax = normalizeBoundValue(maxValue, minuteInterval, showTime, 'max');
+  if (!normalizedMin || !normalizedMax) return null;
+
+  const minTimestamp = showTime ? normalizedMin.getTime() : getDateOnlyTimestamp(normalizedMin);
+  const maxTimestamp = showTime ? normalizedMax.getTime() : getDateOnlyTimestamp(normalizedMax);
+  if (minTimestamp <= maxTimestamp) return null;
+
+  return {
+    code: `${String(minLabel)}>${String(maxLabel)}`,
+    message: `\`${String(minLabel)}\` must be earlier than or equal to \`${String(maxLabel)}\`.`
+  };
+}
+
+export function getBoundsValidationIssues(
+  startValue: NullableDate,
+  minuteInterval: number,
+  minimumDuration: number,
+  showTime: boolean,
+  allowRange: boolean,
+  bounds: PickerValueBounds = {}
+): BoundsValidationIssue[] {
+  const issues: BoundsValidationIssue[] = [];
+  const globalIssue = getBoundComparisonIssue(
+    'minValue',
+    'maxValue',
+    bounds.minValue ?? null,
+    bounds.maxValue ?? null,
+    minuteInterval,
+    showTime
+  );
+  const startIssue = getBoundComparisonIssue(
+    'minStartValue',
+    'maxStartValue',
+    bounds.minStartValue ?? null,
+    bounds.maxStartValue ?? null,
+    minuteInterval,
+    showTime
+  );
+  const endIssue = getBoundComparisonIssue(
+    'minEndValue',
+    'maxEndValue',
+    bounds.minEndValue ?? null,
+    bounds.maxEndValue ?? null,
+    minuteInterval,
+    showTime
+  );
+
+  if (globalIssue) issues.push(globalIssue);
+  if (startIssue) issues.push(startIssue);
+  if (endIssue) issues.push(endIssue);
+
+  if (!globalIssue && !startIssue) {
+    const startBounds = getEffectiveFieldBounds(
+      'start',
+      startValue,
+      minuteInterval,
+      minimumDuration,
+      showTime,
+      allowRange,
+      bounds
+    );
+    if (!areBoundsValid(startBounds, showTime)) {
+      issues.push({
+        code: 'startBoundsEmpty',
+        message: 'Current bounds leave no selectable start values.'
+      });
+    }
+  }
+
+  if (allowRange && !globalIssue && !endIssue) {
+    const endBounds = getEffectiveFieldBounds(
+      'end',
+      startValue,
+      minuteInterval,
+      minimumDuration,
+      showTime,
+      true,
+      bounds
+    );
+    if (!areBoundsValid(endBounds, showTime)) {
+      issues.push({
+        code: 'endBoundsEmpty',
+        message: startValue
+          ? 'Current bounds leave no selectable end values for the current start value and minimum duration.'
+          : 'Current bounds leave no selectable end values.'
+      });
+    }
+  }
+
+  return issues;
+}
+
+export function formatBoundsValidationWarning(
+  componentName: string,
+  issues: BoundsValidationIssue[]
+): string | null {
+  if (!issues.length) return null;
+  return `[${componentName}] Invalid bounds configuration. ${issues.map((issue) => issue.message).join(' ')}`;
+}
+
 export function getFirstSelectableValue(
   field: PickerField,
   startValue: NullableDate,
@@ -584,6 +697,67 @@ export function hasSelectableValueOnDay(
 
   const firstCandidate = ceilDateToMinuteInterval(lowerBound, minuteInterval);
   return firstCandidate.getTime() <= upperBound.getTime() && isSameDay(firstCandidate, day);
+}
+
+export function canSelectCalendarDay(
+  day: Date,
+  field: PickerField,
+  startValue: NullableDate,
+  endValue: NullableDate,
+  minuteInterval: number,
+  minimumDuration: number,
+  showTime: boolean,
+  allowRange: boolean,
+  bounds: PickerValueBounds = {}
+): boolean {
+  const effectiveField = allowRange ? field : 'start';
+  const fieldBounds = getEffectiveFieldBounds(
+    effectiveField,
+    startValue,
+    minuteInterval,
+    minimumDuration,
+    showTime,
+    allowRange,
+    bounds
+  );
+
+  if (hasSelectableValueOnDay(day, fieldBounds, minuteInterval, showTime)) {
+    return true;
+  }
+
+  if (!allowRange || effectiveField !== 'end' || !startValue || endValue) {
+    return false;
+  }
+
+  const base =
+    getFirstSelectableValue(
+      'end',
+      startValue,
+      endValue,
+      minuteInterval,
+      minimumDuration,
+      showTime,
+      true,
+      bounds
+    ) ?? getRangeFieldBaseValue('end', startValue, endValue, showTime);
+  base.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
+  const nextValue = showTime ? snapDateToMinuteInterval(base, minuteInterval) : normalizeDateValue(base);
+  if (!nextValue) return false;
+
+  const normalizedRange = showTime
+    ? updateRangeFieldValue(
+        'end',
+        nextValue,
+        startValue,
+        endValue,
+        minuteInterval,
+        minimumDuration,
+        bounds,
+        true
+      )
+    : updateDateOnlyRangeFieldValue('end', nextValue, startValue, endValue, bounds, true);
+
+  return isSameDay(normalizedRange.start, day) || isSameDay(normalizedRange.end, day);
 }
 
 export function isTimeCandidateOutOfBounds(

@@ -217,6 +217,15 @@
     transform: none !important;
   }
 
+  .chip.selected-chip:disabled,
+  .chip.selected-chip:hover:disabled {
+    opacity: 1;
+    background: var(--picker-primary-bg, #1f6fff);
+    border-color: var(--picker-primary-bg, #1f6fff);
+    color: var(--picker-primary-text, white);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, white 22%, transparent);
+  }
+
   @media (max-width: 768px) {
     .time-column {
       max-height: var(--time-column-mobile-max-height, 160px);

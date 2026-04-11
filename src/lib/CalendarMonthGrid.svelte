@@ -205,22 +205,44 @@
   .day:disabled,
   .day.disabled-day {
     cursor: not-allowed;
-    color: var(--picker-disabled-text, #96a0b1);
-    background: var(--picker-disabled-bg, #eef2f7);
-    opacity: 0.55;
-    box-shadow: none;
+    color: var(--picker-disabled-text, color-mix(in srgb, var(--picker-subtle-text, #7f8899) 82%, var(--picker-shell-text, #172033) 18%));
+    background: var(--picker-disabled-bg, color-mix(in srgb, var(--picker-shell-text, #172033) 7%, transparent));
+    opacity: 1;
+    box-shadow: inset 0 0 0 1px var(--picker-disabled-border, color-mix(in srgb, var(--picker-shell-text, #172033) 10%, transparent));
     transform: none;
   }
 
   .day.outside-month:disabled,
   .day.outside-month.disabled-day {
-    color: var(--picker-disabled-outside-text, #b8c0ce);
+    color: var(--picker-disabled-outside-text, color-mix(in srgb, var(--picker-subtle-text, #7f8899) 78%, transparent));
     background: transparent;
+    box-shadow: none;
   }
 
   .day:disabled:hover,
   .day.disabled-day:hover {
     background: var(--picker-disabled-bg, #eef2f7);
+  }
+
+  .day.selected-day:disabled,
+  .day.range-start:disabled,
+  .day.range-end:disabled,
+  .day.selected-day.disabled-day,
+  .day.range-start.disabled-day,
+  .day.range-end.disabled-day {
+    color: var(--picker-primary-text, white);
+    background: var(--picker-primary-bg, #1f6fff);
+    opacity: 1;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, white 22%, transparent);
+  }
+
+  .day.selected-day:disabled:hover,
+  .day.range-start:disabled:hover,
+  .day.range-end:disabled:hover,
+  .day.selected-day.disabled-day:hover,
+  .day.range-start.disabled-day:hover,
+  .day.range-end.disabled-day:hover {
+    background: var(--picker-primary-bg, #1f6fff);
   }
 
   .today {

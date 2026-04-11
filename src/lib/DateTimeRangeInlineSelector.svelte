@@ -9,6 +9,7 @@
     getEffectiveFieldBounds,
     getDefaultTimePlaceholder,
     getDateOnlyRangePreview,
+    getBoundsValidationIssues,
     getFirstSelectableValue,
     getHour12,
     getMinuteValues,
@@ -17,7 +18,8 @@
     getRangePreview,
     getRangeFieldBaseValue,
     getRangeTimeLayout,
-    hasSelectableValueOnDay,
+    canSelectCalendarDay,
+    formatBoundsValidationWarning,
     isDateWithinRangeExclusive,
     isTimeCandidateOutOfBounds,
     isSameDay,
@@ -64,17 +66,18 @@
   export let showRangeFooter: boolean | undefined = undefined;
   export let showTime: boolean | undefined = undefined;
   export let allowRange: boolean | undefined = undefined;
+  export let suppressBoundsWarnings = false;
 
-  let visibleMonthDate: Date = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  let dateSelectionTarget: PickerField = 'start';
+  export let visibleMonthDate: Date = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  export let dateSelectionTarget: PickerField = 'start';
   let normalizedMinuteInterval = sanitizeMinuteInterval(minuteInterval);
   let normalizedMinimumDuration = sanitizeMinimumDuration(minimumDuration);
   let minuteValues = getMinuteValues(normalizedMinuteInterval);
   let startScrollVersion = 0;
   let endScrollVersion = 0;
   let timeControlSignature = `${timeFormat}-${normalizedMinuteInterval}`;
-  let hoveredPreviewDay: Date | null = null;
-  let previewRange: { start: NullableDate; end: NullableDate } | null = null;
+  export let hoveredPreviewDay: Date | null = null;
+  export let previewRange: { start: NullableDate; end: NullableDate } | null = null;
   let startDisplayValue = getRangeFieldBaseValue('start', startValue, endValue);
   let endDisplayValue = getRangeFieldBaseValue('end', startValue, endValue);
   let endConstraintKey = 'none';
@@ -90,6 +93,7 @@
   let footerEnabled = false;
   let timePickerEnabled = true;
   let rangeEnabled = true;
+  let lastBoundsWarning = '';
 
   $: text = getPickerText(locale);
   $: normalizedMinuteInterval = sanitizeMinuteInterval(minuteInterval);
@@ -110,6 +114,25 @@
     minEndValue,
     maxEndValue
   };
+  $: {
+    const warning = formatBoundsValidationWarning(
+      'DateTimeRangeInlineSelector',
+      getBoundsValidationIssues(
+        startValue,
+        normalizedMinuteInterval,
+        normalizedMinimumDuration,
+        timePickerEnabled,
+        rangeEnabled,
+        bounds
+      )
+    );
+    if (!warning) {
+      lastBoundsWarning = '';
+    } else if (!suppressBoundsWarnings && typeof window !== 'undefined' && warning !== lastBoundsWarning) {
+      console.warn(warning);
+      lastBoundsWarning = warning;
+    }
+  }
 
   $: {
     const normalizedStart = timePickerEnabled
@@ -513,8 +536,17 @@
 
   function isCalendarDayDisabled(day: Date): boolean {
     const field = rangeEnabled ? dateSelectionTarget : 'start';
-    const fieldBounds = field === 'start' ? startBounds : endBounds;
-    return !hasSelectableValueOnDay(day, fieldBounds, normalizedMinuteInterval, timePickerEnabled);
+    return !canSelectCalendarDay(
+      day,
+      field,
+      startValue,
+      endValue,
+      normalizedMinuteInterval,
+      normalizedMinimumDuration,
+      timePickerEnabled,
+      rangeEnabled,
+      bounds
+    );
   }
 </script>
 

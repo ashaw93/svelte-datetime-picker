@@ -2,9 +2,12 @@
   import { onMount } from 'svelte';
   import DateTimeRangeInlineSelector from './DateTimeRangeInlineSelector.svelte';
   import {
+    formatBoundsValidationWarning,
     formatFieldValue,
+    getBoundsValidationIssues,
     getDefaultFieldPlaceholder,
     getPickerText,
+    type PickerField,
     type NullableDate,
     type PickerLocale,
     type TimeFormat,
@@ -36,6 +39,10 @@
   export let showRangeFooter: boolean | undefined = undefined;
   export let showTime: boolean | undefined = undefined;
   export let allowRange: boolean | undefined = undefined;
+  export let visibleMonthDate: Date = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  export let dateSelectionTarget: PickerField = 'start';
+  export let hoveredPreviewDay: Date | null = null;
+  export let previewRange: { start: NullableDate; end: NullableDate } | null = null;
 
   let isOpen = false;
   let isMobile = false;
@@ -46,12 +53,32 @@
   let footerEnabled = false;
   let timePickerEnabled = true;
   let rangeEnabled = true;
+  let lastBoundsWarning = '';
 
   $: text = getPickerText(locale);
   $: headerEnabled = showRangeHeader ?? enableHeader;
   $: footerEnabled = showRangeFooter ?? enableFooter;
   $: timePickerEnabled = showTime ?? !disableTimePicker;
   $: rangeEnabled = allowRange ?? !disableRange;
+  $: {
+    const warning = formatBoundsValidationWarning(
+      'DateTimeRangeInlinePicker',
+      getBoundsValidationIssues(startValue, minuteInterval, minimumDuration, timePickerEnabled, rangeEnabled, {
+        minValue,
+        maxValue,
+        minStartValue,
+        maxStartValue,
+        minEndValue,
+        maxEndValue
+      })
+    );
+    if (!warning) {
+      lastBoundsWarning = '';
+    } else if (typeof window !== 'undefined' && warning !== lastBoundsWarning) {
+      console.warn(warning);
+      lastBoundsWarning = warning;
+    }
+  }
   $: resolvedStartLabel = startLabel === defaultStartLabel ? text.start : startLabel;
   $: resolvedEndLabel = endLabel === defaultEndLabel ? text.end : endLabel;
   $: resolvedPlaceholder =
@@ -98,6 +125,11 @@
       <DateTimeRangeInlineSelector
         bind:startValue
         bind:endValue
+        bind:visibleMonthDate
+        bind:dateSelectionTarget
+        bind:hoveredPreviewDay
+        bind:previewRange
+        suppressBoundsWarnings={true}
         startLabel={resolvedStartLabel}
         endLabel={resolvedEndLabel}
         {locale}
@@ -151,6 +183,11 @@
           <DateTimeRangeInlineSelector
             bind:startValue
             bind:endValue
+            bind:visibleMonthDate
+            bind:dateSelectionTarget
+            bind:hoveredPreviewDay
+            bind:previewRange
+            suppressBoundsWarnings={true}
             startLabel={resolvedStartLabel}
             endLabel={resolvedEndLabel}
             {locale}

@@ -4,7 +4,9 @@
   import TimeSelectorColumns from './TimeSelectorColumns.svelte';
   import {
     HOUR_12_VALUES,
+    formatBoundsValidationWarning,
     formatFieldValue,
+    getBoundsValidationIssues,
     getDefaultFieldPlaceholder,
     getEffectiveFieldBounds,
     getFirstSelectableValue,
@@ -12,7 +14,7 @@
     getMinuteValues,
     getPeriod,
     getPickerText,
-    hasSelectableValueOnDay,
+    canSelectCalendarDay,
     isTimeCandidateOutOfBounds,
     isSameDay,
     isSameTimestamp,
@@ -74,6 +76,7 @@
   const defaultEndLabel = 'End';
   let timePickerEnabled = true;
   let rangeEnabled = true;
+  let lastBoundsWarning = '';
 
   $: is24Hour = timeFormat === '24h';
   $: text = getPickerText(locale);
@@ -90,6 +93,25 @@
     minEndValue,
     maxEndValue
   };
+  $: {
+    const warning = formatBoundsValidationWarning(
+      'DateTimeRangePicker',
+      getBoundsValidationIssues(
+        startValue,
+        normalizedMinuteInterval,
+        normalizedMinimumDuration,
+        timePickerEnabled,
+        rangeEnabled,
+        bounds
+      )
+    );
+    if (!warning) {
+      lastBoundsWarning = '';
+    } else if (typeof window !== 'undefined' && warning !== lastBoundsWarning) {
+      console.warn(warning);
+      lastBoundsWarning = warning;
+    }
+  }
   $: resolvedStartLabel = startLabel === defaultStartLabel ? text.start : startLabel;
   $: resolvedEndLabel = endLabel === defaultEndLabel ? text.end : endLabel;
   $: resolvedPlaceholder =
@@ -329,8 +351,17 @@
 
   function isDayDisabled(day: Date): boolean {
     const field = activeField ?? 'start';
-    const fieldBounds = field === 'start' ? startBounds : endBounds;
-    return !hasSelectableValueOnDay(day, fieldBounds, normalizedMinuteInterval, timePickerEnabled);
+    return !canSelectCalendarDay(
+      day,
+      field,
+      startValue,
+      endValue,
+      normalizedMinuteInterval,
+      normalizedMinimumDuration,
+      timePickerEnabled,
+      rangeEnabled,
+      bounds
+    );
   }
 
   function isCandidateTimeDisabled(hour24: number, minute: number): boolean {

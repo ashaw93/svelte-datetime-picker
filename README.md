@@ -83,6 +83,7 @@ This package currently ships raw Svelte source, so it is best suited to modern S
 - `minEndValue` and `maxEndValue` apply only to the end value.
 - These props are available on `DateTimeRangeInlinePicker`, `DateTimeRangeInlineSelector`, and `DateTimeRangePicker`.
 - In range mode, the picker also intersects those bounds with the current range rules such as `minimumDuration`.
+- If a bound pair conflicts, such as `minValue` being later than `maxValue`, the picker warns in the console and leaves the invalid field with no selectable values until the bounds are corrected.
 
 ## Exported Components
 
@@ -98,3 +99,5 @@ This package currently ships raw Svelte source, so it is best suited to modern S
 - `locale` localizes built-in UI labels for `es` and `en`, with English fallback for other locales.
 - `minValue`, `maxValue`, `minStartValue`, `maxStartValue`, `minEndValue`, and `maxEndValue` constrain calendar and time selection.
 - `enableHeader` and `enableFooter` are optional UI toggles and default to `false`.
+- Documentation examples use `enableHeader`, `enableFooter`, `disableTimePicker`, and `disableRange` as the canonical API.
+- `showRangeHeader`, `showRangeFooter`, `showTime`, and `allowRange` remain supported as compatibility aliases.
