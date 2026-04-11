@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canSelectCalendarDay,
   formatFieldValue,
+  formatBoundsValidationWarning,
   formatSummary,
   getCalendarMonthLabel,
+  getBoundsValidationIssues,
   getEffectiveFieldBounds,
   getMinimumEndValue,
   getOrderedWeekdayNames,
@@ -114,6 +117,114 @@ describe('minimumDuration', () => {
     expect(hasSelectableValueOnDay(new Date('2026-04-14T12:00:00.000Z'), startBounds, 1, true)).toBe(true);
     expect(hasSelectableValueOnDay(new Date('2026-04-17T12:00:00.000Z'), startBounds, 1, true)).toBe(true);
     expect(hasSelectableValueOnDay(new Date('2026-04-18T12:00:00.000Z'), startBounds, 1, true)).toBe(false);
+  });
+});
+
+describe('bounds validation', () => {
+  it('reports direct min/max conflicts', () => {
+    const issues = getBoundsValidationIssues(null, 15, 0, true, true, {
+      minValue: new Date(2025, 0, 5, 12, 30),
+      maxValue: new Date(2025, 0, 5, 12, 15)
+    });
+
+    expect(issues).toEqual([
+      {
+        code: 'minValue>maxValue',
+        message: '`minValue` must be earlier than or equal to `maxValue`.'
+      }
+    ]);
+  });
+
+  it('reports when the current start value leaves no selectable end values', () => {
+    const issues = getBoundsValidationIssues(
+      new Date(2025, 0, 5, 17, 30),
+      15,
+      45,
+      true,
+      true,
+      {
+        maxEndValue: new Date(2025, 0, 5, 18, 0)
+      }
+    );
+
+    expect(issues).toEqual([
+      {
+        code: 'endBoundsEmpty',
+        message:
+          'Current bounds leave no selectable end values for the current start value and minimum duration.'
+      }
+    ]);
+  });
+
+  it('reports when combined bounds leave no selectable start values', () => {
+    const issues = getBoundsValidationIssues(null, 15, 15, true, true, {
+      minStartValue: new Date(2025, 0, 5, 18, 0),
+      maxEndValue: new Date(2025, 0, 5, 18, 0)
+    });
+
+    expect(issues).toEqual([
+      {
+        code: 'startBoundsEmpty',
+        message: 'Current bounds leave no selectable start values.'
+      }
+    ]);
+  });
+
+  it('formats a single warning message from multiple issues', () => {
+    const warning = formatBoundsValidationWarning('DateTimeRangeInlinePicker', [
+      {
+        code: 'minValue>maxValue',
+        message: '`minValue` must be earlier than or equal to `maxValue`.'
+      },
+      {
+        code: 'endBoundsEmpty',
+        message:
+          'Current bounds leave no selectable end values for the current start value and minimum duration.'
+      }
+    ]);
+
+    expect(warning).toBe(
+      '[DateTimeRangeInlinePicker] Invalid bounds configuration. `minValue` must be earlier than or equal to `maxValue`. Current bounds leave no selectable end values for the current start value and minimum duration.'
+    );
+  });
+});
+
+describe('calendar day selection', () => {
+  it('keeps earlier end-date clicks selectable when the range can normalize backwards', () => {
+    expect(
+      canSelectCalendarDay(
+        new Date(2026, 3, 16),
+        'end',
+        new Date(2026, 3, 17, 10, 0),
+        null,
+        15,
+        0,
+        true,
+        true,
+        {
+          minValue: new Date(2026, 3, 14, 6, 0),
+          maxValue: new Date(2026, 3, 18, 18, 0)
+        }
+      )
+    ).toBe(true);
+  });
+
+  it('still blocks earlier end-date clicks when swapping would violate start bounds', () => {
+    expect(
+      canSelectCalendarDay(
+        new Date(2026, 3, 16),
+        'end',
+        new Date(2026, 3, 17, 10, 0),
+        null,
+        15,
+        0,
+        true,
+        true,
+        {
+          minStartValue: new Date(2026, 3, 17, 0, 0)
+        }
+      )
+    ).toBe(false);
   });
 });
 
