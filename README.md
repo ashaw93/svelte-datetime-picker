@@ -17,6 +17,12 @@ GitHub:
 npm install git+https://github.com/ashaw93/svelte-datetime-picker.git
 ```
 
+To pin an exact release in another project, create a matching git tag and install that tag:
+
+```bash
+npm install git+https://github.com/ashaw93/svelte-datetime-picker.git#v0.0.1
+```
+
 This package follows the standard Svelte library packaging flow with `@sveltejs/package` and is best suited to modern Svelte projects using Vite or SvelteKit.
 
 ## Usage
